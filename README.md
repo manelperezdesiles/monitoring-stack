@@ -134,4 +134,64 @@ docker volume rm monitoring_prometheus_data monitoring_grafana_data
 
 - Create custom dashboards
 
+---
 
+## 🪟 Monitoring Windows Hosts with Windows Exporter
+
+This stack supports monitoring Windows machines on your network using the [windows_exporter](https://github.com/prometheus-community/windows_exporter).
+
+### ✅ 1. Install `windows_exporter` on Windows Hosts
+
+1. Download the latest `.msi` installer from the [releases page](https://github.com/prometheus-community/windows_exporter/releases).
+2. Run the installer with default settings (or enable specific collectors).
+3. The exporter will start as a Windows service and expose metrics at: http://<windows-host>:9182/metrics
+
+⚠️ Make sure port **9182** is allowed through the Windows firewall.
+
+### ⚙️ 2. Add Windows Hosts to `prometheus.yml`
+
+Edit the Prometheus configuration file:
+
+```
+  - job_name: 'win-exporter'
+    static_configs:
+      - targets: ['windows-host:9182']
+```
+Replace the IPs with your actual Windows host IP addresses.
+
+Then restart Prometheus:
+```
+docker-compose restart prometheus
+```
+To verify the target is working, visit:
+```
+http://localhost:9090
+```
+And run this PromQL query:
+```
+up{job="windows"}
+```
+You should see a 1 for each working Windows exporter.
+
+### 📊 3. Import Dashboard 14499 Automatically in Grafana
+
+Grafana will provision a prebuilt dashboard for the Windows Exporter using its provisioning system.
+
+a) Download the dashboard JSON
+Run this in your project root:
+```
+wget https://grafana.com/api/dashboards/14694/revisions/2/download \
+ -O grafana/provisioning/dashboards/windows_node_dashboard.json
+```
+c) Fix dashboard datasource variable (optional)
+If you see ${DS_PROMETHEUS} in panel errors:
+1. Open the JSON file windows_node_dashboard.json
+2. Replace ${DS_PROMETHEUS} with Prometheus
+You can do this using:
+```
+sed -i 's/\${DS_PROMETHEUS}/Prometheus/g' grafana/provisioning/dashboards/windows_node_dashboard.json
+```
+Then restart Grafana:
+```
+docker-compose restart grafana
+```
